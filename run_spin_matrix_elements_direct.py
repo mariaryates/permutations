@@ -492,37 +492,7 @@ def uncompressing_transformation(compressed_input_wavefunction):
         
 
     return psi
-# def uncompressing_transformation(compressed_input_wavefunction): 
 
-#     # Initialize arrays
-#     sigma = np.zeros(ntls, dtype=int) 
-#     psi = np.zeros(uncompressed_shape, dtype=complex) 
-
-#     # Iterate over all indices in the uncompressed space
-#     for psi_index in range(uncompressed_shape): 
-#         # Compute n and rem from psi_index
-#         m = 0
-#         n = psi_index // (ldim_s ** ntls) 
-#         rem = psi_index % (ldim_s ** ntls)
-        
-#         # Compute the sigma values
-#         for i in range(ntls):
-#             sigma[i] = rem % ldim_s
-#             rem = rem // ldim_s
-        
-#         # Calculate the sum of sigma values
-#         m = int(sigma.sum())
-       
-#         # Calculate the combined index for the compressed input wavefunction
-#         combined_index = n + nphot * m
-        
-#         # Compute the binomial factor
-#         binom_fac = np.sqrt(comb(ntls, m))
-        
-#         # Assign the value to the uncompressed wavefunction
-#         psi[psi_index] = compressed_input_wavefunction[combined_index] / binom_fac
-        
-#     return psi
 
 uncompressed_wavefunction = uncompressing_transformation(wavefunction)
 
