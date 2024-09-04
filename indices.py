@@ -28,11 +28,12 @@ def list_equivalent_elements():
     indices_elements_inv = {}
     index_transpose_map = []
     transpose_tuple_list = [] 
-    
+
     count = 0
     
     #get minimal list of left and right spin indices (in combined form)
     spins = setup_spin_indices(nspins)
+   
     
     left =[]
     right = []
@@ -47,17 +48,18 @@ def list_equivalent_elements():
     left = array(left)
     right = array(right)
 
+
     #loop over each photon state and each spin configuration
     for count in range(len(spins)):
                 
                 #calculate element and index 
                 element = concatenate((left[count], right[count]))
-                
                 #add appropriate entries to dictionaries
                 indices_elements.append(copy(element))
                 indices_elements_inv[_comp_tuple(element)] = count
-
+    
     for count in range(len(indices_elements)): 
+    
         element = indices_elements[count]
         left = element[0:nspins]
         right = element[nspins:2*nspins]

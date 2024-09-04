@@ -2,7 +2,16 @@
 
 import numpy as np
 
+indices_elements = []
+indices_elements_inv = {}
+index_transpose_map = []
+
 def list_equivalent_elements(nspins, ldim_s=2):
+
+    # convert to global variables 
+
+    global indices_elements, indices_elements_inv, index_transpose_map, transpose_tuple_list
+
     indices_elements = []
     indices_elements_inv = {}
     count = 0
