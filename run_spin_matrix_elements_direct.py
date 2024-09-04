@@ -263,7 +263,6 @@ def M_matrix_full(ie, ntls, ntls_a, ntls_b):
     W_a = [(1.0 / np.sqrt(comb(ntls_a, m))) for m in range(ntls_a + 1)]
     W_b = [(1.0 / np.sqrt(comb(ntls_b, m))) for m in range(ntls_b + 1)]
     matrix_elements_dict = {}
-    
     left_indices = {}
     right_indices = {}
 
@@ -332,90 +331,6 @@ def M_matrix_full(ie, ntls, ntls_a, ntls_b):
             # print(f'lambda={spin_element_index:4d}, partitions={partition}, S={Stot}, overlap=sqrt({overlap ** 2:.2f})')
 
     return matrix_elements_dict, left_indices, right_indices
-
-import numpy as np
-from scipy.special import comb
-
-# def M_matrix_full(ie, ntls, ntls_a, ntls_b):
-
-#     # Initialize arrays for weights and Clebsch-Gordan coefficients
-#     W_a = [(1.0 / np.sqrt(comb(ntls_a, m))) for m in range(ntls_a + 1)]
-#     W_b = [(1.0 / np.sqrt(comb(ntls_b, m))) for m in range(ntls_b + 1)]
-    
-
-#     # Dictionaries to store results for each sigma configuration
-#     matrix_elements_dict = {sigma: {} for sigma in range(num_sigma)}
-#     left_indices = {sigma: {} for sigma in range(num_sigma)}
-#     right_indices = {sigma: {} for sigma in range(num_sigma)}
-
-#     # Loop over sigma configurations
-    
-#         # Loop over all elements
-#         # wrong sig loop
-#     for spin_element_index, element in enumerate(ie):
-#             left, right = np.split(element, 2)
-
-#             partition = get_partitions(left, right)
-#             m_left, m_right = sum(left), sum(right)
-
-#             # Compute Clebsch-Gordan coefficients
-#             U_left = get_split_spin_transform(m_left)
-#             U_right = get_split_spin_transform(m_right)
-
-#             # Get the sub-partitions
-#             p_a_list = get_partition_divisions(partition)
-
-#             # Initialize overlap calculation
-#             mz_left = m_left - ntls / 2.0
-#             mz_right = m_right - ntls / 2.0
-#             mz_max = max(abs(mz_left), abs(mz_right))
-#             Sa, Sb = ntls_a / 2.0, ntls_b / 2.0  # Spin quantum numbers for each subsystem
-#             size = int(Sa + Sb + 1 - mz_max)
-#             melem = np.zeros(size, dtype=complex)
-
-#             # Iterate over possible partitions
-#             for p_a in p_a_list:
-#                 p_b = partition - p_a
-
-#                 p_a_count = multinomial(p_a)
-#                 p_b_count = multinomial(p_b)
-
-#                 # Calculate left and right excitations
-#                 m_a_left = p_a[3] + p_a[2]
-#                 m_a_right = p_a[3] + p_a[1]
-#                 m_b_left = p_b[3] + p_b[2]
-#                 m_b_right = p_b[3] + p_b[1]
-
-#                 for iS in range(size):
-#                     Stot = mz_max + iS
-#                     iS_left = int(Stot - abs(mz_left))
-#                     iS_right = int(Stot - abs(mz_right))
-
-#                     ip_left = int((m_a_left - Sa) - max(-Sa, -Sb + mz_left))
-#                     ip_right = int((m_a_right - Sa) - max(-Sa, -Sb + mz_right))
-
-#                     # Calculate overlap components
-#                     A_left = W_a[m_a_left] * W_b[m_b_left] * U_left[iS_left, ip_left]
-#                     A_right = W_a[m_a_right] * W_b[m_b_right] * U_right[iS_right, ip_right]
-
-#                     # Add contribution to matrix element
-#                     melem[iS] += p_a_count * p_b_count * A_left * A_right
-
-#             if spin_element_index not in matrix_elements_dict[sigma]:
-#                 matrix_elements_dict[sigma][spin_element_index] = []
-#                 left_indices[sigma][spin_element_index] = []
-#                 right_indices[sigma][spin_element_index] = []
-
-#             # Store results
-#             for iS in range(size):
-#                 Stot = mz_max + iS
-#                 overlap = melem[iS]
-#                 matrix_elements_dict[sigma][spin_element_index].append(overlap) 
-
-#                 left_indices[sigma][spin_element_index].append(m_left)
-#                 right_indices[sigma][spin_element_index].append(m_right)
-
-#     return matrix_elements_dict, left_indices, right_indices
 
 
 M, M_index_l, M_index_r = M_matrix_full(indices_elements, ntls, ntls_a, ntls_b)
@@ -614,10 +529,6 @@ def product_rho_wavefunction(wavefunction, rho_ss):
                                 )
     
     return C_out_array
-
-
-
-
 
 
 from operators import qeye
