@@ -54,7 +54,7 @@ for i in range(1):
     from indices import indices_elements
 
     M, M_index_l, M_index_r = M_matrix_symmetric(indices_elements, ntls)
-
+    print(M, M_index_l, M_index_r)
 
     def product_rho_wavefunction(wavefunction, rho_ss): 
     
@@ -96,7 +96,7 @@ for i in range(1):
 
         return C_out_array
 
-
+    
 
     identity_phot = qeye(ldim_p)
     identity_spin = qeye(ldim_s)
@@ -112,6 +112,7 @@ for i in range(1):
     
     eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=6, which = 'SA', tol = 1e-6)
     eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
+    
     
     eigenvals_symmetric[i].append(eig_symmetric) 
     

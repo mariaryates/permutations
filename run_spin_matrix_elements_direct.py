@@ -18,6 +18,7 @@ widgets = [' ', progressbar.Percentage(), ' ',  progressbar.Timer()]
 from qutip import clebsch
 #from scipy.special import binom
 from math import comb
+import pickle 
 
 
 try:
@@ -163,6 +164,7 @@ num_non_zero = 0
 pbar = progressbar.ProgressBar(maxval=num_elements, widgets=widgets)
 pbar.start()
 
+data = []
 
 for spin_element_index in range(num_elements):
     
@@ -235,294 +237,156 @@ for spin_element_index in range(num_elements):
     
             melem[iS]+=p_a_count * p_b_count *  A_left * A_right
         
+    
     for iS in range(size):
         Stot=mz_max+iS
         overlap=melem[iS]
         print(f'lambda={spin_element_index:4d}, partitions={partition}, S={Stot},    overlap=sqrt({overlap**2:.2f})')
 
-### new stuff
-
-def M_matrix_full(ie, ntls, ntls_a, ntls_b):
-    """
-    Calculate the matrix elements using overlap values based on Clebsch-Gordan coefficients, 
-    partitions, and multinomial coefficients.
-    
-    Parameters:
-    - ie: list of index elements for spin states.
-    - ntls: total number of spins.
-    - ntls_a: number of spins in the first subsystem.
-    - ntls_b: number of spins in the second subsystem.
-    
-    Returns:
-    - matrix_elements: List of calculated matrix elements.
-    - left_indices: List of left spin sums.
-    - right_indices: List of right spin sums.
-    """
-    
-    # Initialize arrays for weights and Clebsch-Gordan coefficients
-    W_a = [(1.0 / np.sqrt(comb(ntls_a, m))) for m in range(ntls_a + 1)]
-    W_b = [(1.0 / np.sqrt(comb(ntls_b, m))) for m in range(ntls_b + 1)]
-    matrix_elements_dict = {}
-    left_indices = {}
-    right_indices = {}
-
-    # Loop over all elements
-    for spin_element_index, element in enumerate(ie):
-        left, right = np.split(element, 2)
         
-        partition = get_partitions(left, right)
-        m_left, m_right = sum(left), sum(right)
+        data.append({
+            'lambda': spin_element_index,
+            'Stot': Stot,
+            'm_elem': np.sqrt(overlap**2)
+        })
 
-        # Compute Clebsch-Gordan coefficients
-        U_left = get_split_spin_transform(m_left)
-        U_right = get_split_spin_transform(m_right)
-        
-        # Get the sub-partitions
-        p_a_list = get_partition_divisions(partition)
+# for i in range(len(data)): 
+#     print(data[i]['m_elem'])
 
-        # Initialize overlap calculation
-        mz_left = m_left - ntls / 2.0
-        mz_right = m_right - ntls / 2.0
-        mz_max = max(abs(mz_left), abs(mz_right))
-        size = int(Sa + Sb + 1 - mz_max)
-        melem = np.zeros(size)
-        
-        # Iterate over possible partitions
-        for p_a in p_a_list:
-            p_b = partition - p_a
-            
-            p_a_count = multinomial(p_a)
-            p_b_count = multinomial(p_b)
+# allowed Stot -- myates
 
-            # Calculate left and right excitations
-            m_a_left = p_a[3] + p_a[2]
-            m_a_right = p_a[3] + p_a[1]
-            m_b_left = p_b[3] + p_b[2]
-            m_b_right = p_b[3] + p_b[1]
-            
-            for iS in range(size):
-                Stot = mz_max + iS
-                iS_left = int(Stot - abs(mz_left))
-                iS_right = int(Stot - abs(mz_right))
-                
-                ip_left = int((m_a_left - Sa) - max(-Sa, -Sb + mz_left))
-                ip_right = int((m_a_right - Sa) - max(-Sa, -Sb + mz_right))
+def s_tot_function(ntls): 
 
-                # Calculate overlap components
-                A_left = W_a[m_a_left] * W_b[m_b_left] * U_left[iS_left, ip_left]
-                A_right = W_a[m_a_right] * W_b[m_b_right] * U_right[iS_right, ip_right]
+    s_tot_list = [] 
 
-                # Add contribution to matrix element
-                melem[iS] += p_a_count * p_b_count * A_left * A_right
+    spin = 1/2 
+    s_tot = ntls*spin 
+    s_tot_list.append(s_tot)
+    while s_tot >= 0: 
+        s_tot = s_tot - 1 
+        if s_tot >= 0:
+            s_tot_list.append(s_tot)
 
-        if spin_element_index not in matrix_elements_dict:
-            matrix_elements_dict[spin_element_index] = []
-            left_indices[spin_element_index] = []
-            right_indices[spin_element_index] = []
+    return s_tot_list
 
-        # Store results
-        for iS in range(size):
-            Stot = mz_max + iS
-            overlap = melem[iS]
-            matrix_elements_dict[spin_element_index].append(overlap) 
-        
-            left_indices[spin_element_index].append(m_left)
-            right_indices[spin_element_index].append(m_right)
-            # print(f'lambda={spin_element_index:4d}, partitions={partition}, S={Stot}, overlap=sqrt({overlap ** 2:.2f})')
+s_tot_list = s_tot_function(ntls)
 
-    return matrix_elements_dict, left_indices, right_indices
+# reconstructing M's from data 
 
+list_of_m = [[] for _ in range(len(s_tot_list))]
 
-M, M_index_l, M_index_r = M_matrix_full(indices_elements, ntls, ntls_a, ntls_b)
+data_len = len(data) 
+
+for spin in range(len(s_tot_list)): 
+    empty_m = np.zeros(num_elements)
+    for data_entry in range(data_len): 
+        row = data[data_entry]
+        row_spin = row['Stot']
+        if int(row_spin) == spin: 
+            index = row['lambda']
+            row_elem = row['m_elem']
+            empty_m[index] = row_elem
+
+        # print(row_elem)
+
+    list_of_m[spin].append(empty_m)
+
+def M_matrix(M_list_entry, indices_elements):
+# constructing a 3d object for the eigenvalues calculation. 
+    M = M_list_entry
+
+    M_index_l = [] 
+    M_index_r = []
+    for i in range(len(indices_elements)): 
+        left = indices_elements[i][0:ntls]
+        right = indices_elements[i][ntls: ntls*2]
+        M_index_l.append(left.sum())
+        M_index_r.append(right.sum())
+
+    return M, M_index_l, M_index_r 
 
 
-from basis import setup_basis, setup_rho
-from expect import setup_convert_rho, setup_convert_rho_nrs, get_rho_transpose, get_rdms
-#setup routines 
-nphot = 2
-setup_basis(ntls, 2, nphot)
+from indices import list_equivalent_elements as list_equivalent_elements_original
+from scipy.sparse.linalg import LinearOperator 
+from operators import qeye 
+from expect import get_rho_transpose, setup_convert_rho, setup_convert_rho_nrs, get_rdms
+from basis import setup_basis
 
-setup_convert_rho()
-
-## point of query
-from indices import list_equivalent_elements as l_e_e
-l_e_e()
-from basis import nspins, ldim_p, ldim_s
-setup_convert_rho_nrs(ntls) 
-
-#create a random hermitian rho 
 np.random.seed(42) 
-
+#create a random hermitian rho 
 rho_rand_compr = np.random.rand(80)
 transpose_random_rho = get_rho_transpose(rho_rand_compr, photon = True, spin = True) 
 the_hermitian_rho = rho_rand_compr + transpose_random_rho
 rho_rand_comp = the_hermitian_rho
-compressed_rho_list = [rho_rand_comp] # get_rdms expects a list of states
 
-uncompressed_rho_list = get_rdms(compressed_rho_list, nrs= ntls, photon=True) # 1 spins and a photon
+eigenvals_symmetric = [[] for _ in range(len(s_tot_list))]
+import csv
+with open('full_eigenvalues_3_2.csv', 'w', newline='') as file:
+    writer = csv.writer(file)
 
-rho_spin_rdms = uncompressed_rho_list[0] 
 
+    for i in range(len(list_of_m)):
+            M, M_index_l, M_index_r = M_matrix(list_of_m[i], indices_elements)
+            
+            nphot = 2
+            shape = nphot*(ntls+1) 
+            #setup routines 
+            setup_basis(ntls, 2, nphot)
+            list_equivalent_elements_original()
+            setup_convert_rho()
+            from basis import nspins, ldim_p, ldim_s
 
-def product_rho_wavefunction(wavefunction, rho_ss):
-    """
-    Computes the product of the matrix elements, wavefunction, and density matrix
-    to get the final output array.
-    
-    Parameters:
-    - wavefunction: The wavefunction array.
-    - rho_ss: The density matrix array.
-    
-    Returns:
-    - C_out_array: The final 1D output array.
-    """
-    
-    # Initialize the dictionary with matrix elements and their indices
-    M_matrix_dict = M
-    left_indices_dict = M_index_l
-    right_indices_dict = M_index_r
-    
-    num_lambda = len(M_matrix_dict)
-    # num_sigma = 2 ** ntls  # Number of possible sigma configurations
-    shape = (nphot, ntls + 1)  # Shape of the output array
-    
-    # Initialize the output array
-    C_out_array = np.zeros(np.prod(shape), dtype=complex)
-    
-    # Loop over sigma configurations
-    for sigma in range(1):
-        # Loop over photon space (left)
-        for n_l in range(nphot):
-            # Loop over photon space (right)
-            for n_r in range(nphot):
-                # Loop over lambda (spin space states)
-                for lambda_ in range(num_lambda):
-                    spin_tot = int(0.5 * ntls)  # Total spin for ntls 1/2 spins
-                    
-                    if lambda_ not in left_indices_dict or lambda_ not in right_indices_dict:
-                        continue
-                    
-                    # Get the spin indices
-                    m_lam_r = right_indices_dict[lambda_][0]  # Right spin index
-                    m_lam_l = left_indices_dict[lambda_][0]   # Left spin index
-                    
-                    # Entry of the input rho_ss
-                    element_index = ldim_p * len(indices_elements) * n_l + len(indices_elements) * n_r + lambda_
-                    
-                    # Calculate flattened index for wavefunction
-                    combined_C_r_index = (sigma * nphot * (ntls + 1)) + (n_r * (ntls + 1)) + m_lam_l
-                    
-                    # Flatten the index for the output array
-                    flat_index = sigma * (nphot * (ntls + 1)) + (n_l * (ntls + 1)) + m_lam_r
-                    
-                    # Debugging prints
-                    print(f"Processing: sigma={sigma}, n_l={n_l}, n_r={n_r}, lambda_={lambda_}")
-                    print(f"element_index={element_index}")
-                    print(f"combined_C_r_index={combined_C_r_index}")
-                    print(f"flat_index={flat_index}")
-                    
-                    # Check if lambda is in M_matrix_dict
-                    if lambda_ in M_matrix_dict:
-                        M_values_for_lambda = M_matrix_dict[lambda_]
-                        
-                        # Iterate over possible M_values for lambda
-                        for idx, M_value in enumerate(M_values_for_lambda):
-                            # Use flattened index for wavefunction
-                            wavefunction_index = combined_C_r_index
+            setup_convert_rho_nrs(ntls) 
+
+            compressed_rho_list = [rho_rand_comp] # get_rdms expects a list of states
+            rho_spin = get_rdms(compressed_rho_list, nrs= ntls, photon=True) # 1 spins and a photon
+            rho_spin_rdms = rho_spin[0] 
+            
+            from indices import indices_elements
+
+            def product_rho_wavefunction(wavefunction, rho_ss): 
+                shape = nphot*(ntls+1)
+                C_out_array = np.zeros(shape, dtype = complex)
+                C_out = 0 
+                for n_l in range(nphot): 
+                    for n_r in range(nphot): 
+                        for lambda_ in range(len(indices_elements)):
+                       
+                            m_lam_r = M_index_l[lambda_]
+                            m_lam_l = M_index_r[lambda_]
+                            element_index = ldim_p*len(indices_elements)*n_l + len(indices_elements)*n_r + lambda_ 
+                            combined_C_r_index = n_r + nphot*(m_lam_l )
+                            combined_C_l_index = n_l + nphot*(m_lam_r)
+                            if M[0][lambda_] !=0:
+                                C_out_array[combined_C_l_index] += M[0][lambda_] * wavefunction[combined_C_r_index]  *rho_ss[element_index]  
+                            else: 
+                                C_out_array[combined_C_l_index] += wavefunction[combined_C_r_index]  *rho_ss[element_index]  
+
                             
-                            # Ensure indices are within bounds
-                            if (n_l < nphot and m_lam_r < ntls + 1):
-                                # Debugging prints
-                                print(f"M_value={M_value}, wavefunction[wavefunction_index]={wavefunction[wavefunction_index]}")
-                                print(f"rho_ss[element_index]={rho_ss[element_index]}")
-                                
-                                C_out_array[flat_index] += (
-                                    M_value *
-                                    wavefunction[wavefunction_index] *
-                                    rho_ss[element_index]
-                                )
-    
-    return C_out_array
+                            
 
+                return C_out_array
+            
+            from basis import setup_rho
+            identity_phot = qeye(ldim_p)
+            identity_spin = qeye(ldim_s)
 
-from operators import qeye
+            rho_identity = setup_rho(identity_phot, identity_spin)
+            
+            shapeA = nphot*(ntls+1)
 
-identity_phot = qeye(ldim_p)
-identity_spin = qeye(ldim_s)
+            def mv(wavefunction):
+                return product_rho_wavefunction(wavefunction,rho_rand_comp + 5*rho_identity ) 
+            
+            A = LinearOperator((shapeA,shapeA), matvec=mv) 
+            import scipy
+            
+            eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=6, which = 'SA', tol = 1e-6)
+           
+            eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
+            # print(f' eig sym{eig_symmetric_adjust}')
+            # # print(eig_symmetric_adjust)
+            # eigenvals_symmetric[i].append(eig_symmetric) 
+            writer.writerow(eig_symmetric)
 
-rho_identity = setup_rho(identity_phot, identity_spin)
-    
-shape = nphot*(ntls+1)
-  
-def mv(wavefunction):
-    return product_rho_wavefunction(wavefunction,rho_rand_comp + 5*rho_identity) 
-
-## assessment of the multiplication
-
-wavefunction = np.random.rand(shape) 
-                         
-from scipy.special import comb
-uncompressed_shape = ldim_p*(ldim_s ** ntls)
-
-
-def uncompressing_transformation(compressed_input_wavefunction): 
-    
-    sigma = np.zeros(ntls) 
-    psi = np.zeros(uncompressed_shape) 
-
-    
-    for psi_index in range(uncompressed_shape): 
-        m = 0
-        n = psi_index// (ldim_s**ntls) 
-        rem = psi_index % (ldim_s**ntls) 
-        
-        for i in range(ntls): 
-            sigma[i] = rem  % (ldim_s)
-            rem = rem // (ldim_s)
-        # print(sigma)
-        m = int(sigma.sum())
-       
-        # print(m)
-        # indexing through the original compressed input wavefunction 
-        
-        combined_index =(n + nphot*m)
-        binom_fac = np.sqrt(comb(ntls, m) )
-        psi[psi_index] = compressed_input_wavefunction[combined_index] / binom_fac
-        
-        
-
-    return psi
-
-
-uncompressed_wavefunction = uncompressing_transformation(wavefunction)
-
-uncompressed_rho_list = get_rdms([rho_identity], nrs= ntls, photon=True) # 1 spins and a photon
-# appears to be working correctly for the identity matrix at least
-uncomp = uncompressed_wavefunction*uncompressed_rho_list
-
-
-comp_prod = product_rho_wavefunction(wavefunction, rho_identity)
-print((wavefunction))
-# uncomp_comp_prod = uncompressing_transformation(comp_prod)
-print(comp_prod)
-## product_rho_wavefunction is NOT working 
-
-# import scipy.sparse.linalg
-# from scipy.sparse.linalg import LinearOperator 
-
-
-# A = LinearOperator((shape,shape), matvec=mv) 
-    
-# eig_full_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=6, which = 'SA', tol = 1e-6)
-# eig_full = [x - 5 for x in eig_full_adjust]
-# eigenvals_full = []
-# eigenvals_full.append(eig_full) 
-    
-# eigenvalues_full_list = eigenvals_full[0]
-# print(eigenvalues_full_list)
-
-# import csv
-# with open('full_eigenvalues_3_2.csv', 'w', newline='') as file:
-#     writer = csv.writer(file)
-#     writer.writerow(eigenvalues_full_list)  # Writing as a single row
 
