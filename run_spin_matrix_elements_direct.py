@@ -250,8 +250,6 @@ for spin_element_index in range(num_elements):
             'm_elem': np.sqrt(overlap**2)
         })
 
-# for i in range(len(data)): 
-#     print(data[i]['m_elem'])
 
 # allowed Stot -- myates
 
@@ -324,9 +322,11 @@ import csv
 with open('full_eigenvalues_3_2.csv', 'w', newline='') as file:
     writer = csv.writer(file)
 
-
-    for i in range(len(list_of_m)):
-            M, M_index_l, M_index_r = M_matrix(list_of_m[i], indices_elements)
+    total_eigenvalues = []
+    # for i in range(len(list_of_m)):
+    for i in range(1):
+            list_ = list_of_m[0] 
+            M, M_index_l, M_index_r = M_matrix(list_, indices_elements)
             
             nphot = 2
             shape = nphot*(ntls+1) 
@@ -350,20 +350,16 @@ with open('full_eigenvalues_3_2.csv', 'w', newline='') as file:
                 C_out = 0 
                 for n_l in range(nphot): 
                     for n_r in range(nphot): 
-                        for lambda_ in range(len(indices_elements)):
-                       
+                        for lambda_ in range(len(indices_elements)): 
+                                
                             m_lam_r = M_index_l[lambda_]
                             m_lam_l = M_index_r[lambda_]
-                            element_index = ldim_p*len(indices_elements)*n_l + len(indices_elements)*n_r + lambda_ 
+                            element_index = ldim_p*len(indices_elements)*n_l + len(indices_elements)*n_r+ lambda_ 
                             combined_C_r_index = n_r + nphot*(m_lam_l )
                             combined_C_l_index = n_l + nphot*(m_lam_r)
-                            if M[0][lambda_] !=0:
-                                C_out_array[combined_C_l_index] += M[0][lambda_] * wavefunction[combined_C_r_index]  *rho_ss[element_index]  
-                            else: 
-                                C_out_array[combined_C_l_index] += wavefunction[combined_C_r_index]  *rho_ss[element_index]  
-
                             
-                            
+                            C_out_array[combined_C_l_index] += M[0][lambda_] * wavefunction[combined_C_r_index]  *rho_ss[element_index]  
+                                            
 
                 return C_out_array
             
@@ -372,6 +368,11 @@ with open('full_eigenvalues_3_2.csv', 'w', newline='') as file:
             identity_spin = qeye(ldim_s)
 
             rho_identity = setup_rho(identity_phot, identity_spin)
+
+
+            # reproducible example of multiplication issue 
+            sample_wavefunction = [1,2,3,4,5,6,7,8]
+            print(f' sample product{product_rho_wavefunction(sample_wavefunction, rho_identity)}')
             
             shapeA = nphot*(ntls+1)
 
@@ -384,9 +385,6 @@ with open('full_eigenvalues_3_2.csv', 'w', newline='') as file:
             eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=6, which = 'SA', tol = 1e-6)
            
             eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
-            # print(f' eig sym{eig_symmetric_adjust}')
-            # # print(eig_symmetric_adjust)
-            # eigenvals_symmetric[i].append(eig_symmetric) 
-            writer.writerow(eig_symmetric)
-
-
+            for val in eig_symmetric:
+                total_eigenvalues.append(val)
+    writer.writerow(np.sort(total_eigenvalues))
