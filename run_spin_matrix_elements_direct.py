@@ -323,9 +323,9 @@ with open('full_eigenvalues_3_2.csv', 'w', newline='') as file:
     writer = csv.writer(file)
 
     total_eigenvalues = []
-    # for i in range(len(list_of_m)):
-    for i in range(1):
-            list_ = list_of_m[0] 
+ 
+    for i in range(len(list_of_m)):
+            list_ = list_of_m[i]
             M, M_index_l, M_index_r = M_matrix(list_, indices_elements)
             
             nphot = 2
