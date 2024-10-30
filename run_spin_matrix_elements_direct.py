@@ -39,7 +39,8 @@ def timeit(func, msg, *args):
     print('done ({:.0f}s)'.format(time()-t0))
     return res
 
-ntls = int(sys.argv[1]) # number of TLS
+ntls=5
+#ntls = int(sys.argv[1]) # number of TLS
 
 # Split into two almost equal parts (equal if ntls is integer).
 # Record botht the number of spins and the Sa, Sb values for Clebsch 
@@ -56,7 +57,7 @@ np.set_printoptions(linewidth=130)
 ldim_s = 2 # spin dimension
 # Setup spin elements
 indices_elements = timeit(list_equivalent_elements, 'Setup perm. symmetric elements...', ntls, ldim_s)
-num_elements = len(indices_elements)
+num_partitions = len(indices_elements)
 
 def get_partitions(left, right):
     """Count the partitions of ns into values"""
@@ -161,17 +162,17 @@ W_b=[(1.0/np.sqrt(comb(ntls_b,m))) for m in range(ntls_b+1)]
 #print('Calculating overlaps...')
 
 num_non_zero = 0
-pbar = progressbar.ProgressBar(maxval=num_elements, widgets=widgets)
+pbar = progressbar.ProgressBar(maxval=num_partitions, widgets=widgets)
 pbar.start()
 
-data = []
+Melem_data = []
 
-for spin_element_index in range(num_elements):
+for partition_index in range(num_partitions):
     
-    element = indices_elements[spin_element_index] # Element lambda to calculate overlaps for
+    element = indices_elements[partition_index] # Element lambda to calculate overlaps for
     left, right = np.split(element,2)
     
-    #Olambda = get_rdm(spin_element_index) # no need to actually compute RDM
+    #Olambda = get_rdm(lambda) # no need to actually compute RDM
     partition = get_partitions(left,right)
     m_left, m_right = sum(left), sum(right) 
 
@@ -241,74 +242,118 @@ for spin_element_index in range(num_elements):
     for iS in range(size):
         Stot=mz_max+iS
         overlap=melem[iS]
-        print(f'lambda={spin_element_index:4d}, partitions={partition}, S={Stot},    overlap=sqrt({overlap**2:.2f})')
+        print(f'lambda={partition_index:4d}, partitions={partition}, S={Stot},    overlap=sqrt({overlap**2:.2f})')
 
         
-        data.append({
-            'lambda': spin_element_index,
+        Melem_data.append({
+            'lambda': partition_index,
             'Stot': Stot,
-            'm_elem': np.sqrt(overlap**2)
+            'mat_elem': np.sqrt(overlap**2),
+            'm_l': m_left,
+            'm_r': m_right
         })
 
 
-# allowed Stot -- myates
+# Enumerate the allowed values of total S, in decreasing order.
+# (No longer used below, since we can just enumerate indices)    
+from math import floor
+S_tot_list = [ntls*0.5 - n for n in range(floor(ntls*0.5+1))]    
 
-def s_tot_function(ntls): 
+# Rearrange Melem_Lambda_S data into a nested data structure
+# so that there's a separate list for each value of S. 
+Melem_byS_data = [[]  for _ in range(len(s_tot_list))]
+for Melem_entry in Melem_data:
+    # Use indexing so largest Stot is index zero, and index decreases Stot
+    S_index = floor((ntls*0.5) - Melem_entry['Stot'])
 
-    s_tot_list = [] 
-
-    spin = 1/2 
-    s_tot = ntls*spin 
-    s_tot_list.append(s_tot)
-    while s_tot >= 0: 
-        s_tot = s_tot - 1 
-        if s_tot >= 0:
-            s_tot_list.append(s_tot)
-
-    return s_tot_list
-
-s_tot_list = s_tot_function(ntls)
-
-# reconstructing M's from data 
-
-list_of_m = [[] for _ in range(len(s_tot_list))]
-
-data_len = len(data) 
-
-for spin in range(len(s_tot_list)): 
-    empty_m = np.zeros(num_elements)
-    for data_entry in range(data_len): 
-        row = data[data_entry]
-        row_spin = row['Stot']
-        if int(row_spin) == spin: 
-            index = row['lambda']
-            row_elem = row['m_elem']
-            empty_m[index] = row_elem
-
-        # print(row_elem)
-
-    list_of_m[spin].append(empty_m)
-
-def M_matrix(M_list_entry, indices_elements):
-# constructing a 3d object for the eigenvalues calculation. 
-    M = M_list_entry
-
-    M_index_l = [] 
-    M_index_r = []
-    for i in range(len(indices_elements)): 
-        left = indices_elements[i][0:ntls]
-        right = indices_elements[i][ntls: ntls*2]
-        M_index_l.append(left.sum())
-        M_index_r.append(right.sum())
-
-    return M, M_index_l, M_index_r 
+    Melem_byS_data[S_index].append(Melem_entry)
 
 
+# Evaluate product of wavefunction and matrix for a given S sector.
+# JK Comment:    
+# At present this uses S_index to look up content of list of matrix elements
+# and the value of S.  Alternatively one could pass the data structures 
+# of these things directly to this routine, unsure which is clearer.
+def product_rho_wavefunction(psi_in, rho_ss, S_index): 
+    # Find value of collective spin S and thus size of wavefunction.
+    Stot = ntls*0.5 - S_index
+    shape = nphot*floor(2*Stot+1)
+    
+    assert len(psi_in)==shape, "Size of input wavefunction inconsistent with Stot"
+    psi_out = np.zeros(shape, dtype = complex)
+    
+    
+    for Melem_entry in Melem_byS_data[S_index]:
+        # The m_l and m_r indices count how many excited spins there
+        # are.  The range of these narrows as one goes to smaller 
+        # total spin, the offset below is so that they are indexed 
+        # from zero in each spin sector (as they are used to index
+        # the wavefunction.)
+        m_lam_r = Melem_entry['m_r'] - S_index
+        m_lam_l = Melem_entry['m_l'] - S_index
+        lambda_ = Melem_entry['lambda']
+        M_value = Melem_entry['mat_elem']
+
+        for n_l in range(nphot): 
+            for n_r in range(nphot): 
+                                
+                # Work out indices into objects including photon effects
+                rho_index = ldim_p*num_partitions*n_l + num_partitions*n_r + lambda_
+                psi_r_index = n_r + nphot*(m_lam_l )
+                psi_l_index = n_l + nphot*(m_lam_r)
+
+                psi_out[psi_l_index] += M_value * psi_in[psi_r_index] * rho_ss[rho_index]  
+
+    return psi_out
+
+
+######################################################################
+# Test code to check identities.
+######################################################################
+
+
+# reproducible example of multiplication issue: Create identity
+# density matrix and then test multiplying a wavefunction by this.
 from indices import list_equivalent_elements as list_equivalent_elements_original
-from scipy.sparse.linalg import LinearOperator 
+from basis import setup_basis, setup_rho
+from expect import get_rho_transpose, setup_convert_rho, setup_convert_rho_nrs
 from operators import qeye 
-from expect import get_rho_transpose, setup_convert_rho, setup_convert_rho_nrs, get_rdms
-from basis import setup_basis
+
+# Set up of basis states etc.
+nphot = 2
+setup_basis(ntls, 2, nphot)
+from basis import  nspins, ldim_p, ldim_s
+
+list_equivalent_elements_original()
+setup_convert_rho()
+setup_convert_rho_nrs(ntls) 
+
+identity_phot = qeye(ldim_p)
+identity_spin = qeye(ldim_s)
+
+rho_identity = setup_rho(identity_phot, identity_spin)
+
+# Create a test wavefunction in each spin sector
+for S_index in range(floor(ntls*0.5+1)):
+    Stot = ntls*0.5 - S_index
+    shape = nphot*floor(2*Stot+1)
+
+    test_wf_in = [1.0*(n+1) for n in range(shape)]
+    test_wf_out = product_rho_wavefunction(test_wf_in, rho_identity, S_index)
+
+    # Print to see if input = output
+    print(test_wf_in)
+    print(test_wf_out)
+
+
+exit
+######################################################################
+# Test code stops above this
+######################################################################
+
+
+from scipy.sparse.linalg import LinearOperator 
+
 
 np.random.seed(42) 
 #create a random hermitian rho 
@@ -328,51 +373,15 @@ with open('full_eigenvalues_3_2.csv', 'w', newline='') as file:
             list_ = list_of_m[i]
             M, M_index_l, M_index_r = M_matrix(list_, indices_elements)
             
-            nphot = 2
             shape = nphot*(ntls+1) 
             #setup routines 
-            setup_basis(ntls, 2, nphot)
-            list_equivalent_elements_original()
-            setup_convert_rho()
-            from basis import nspins, ldim_p, ldim_s
-
-            setup_convert_rho_nrs(ntls) 
 
             compressed_rho_list = [rho_rand_comp] # get_rdms expects a list of states
-            rho_spin = get_rdms(compressed_rho_list, nrs= ntls, photon=True) # 1 spins and a photon
-            rho_spin_rdms = rho_spin[0] 
+#            rho_spin = get_rdms(compressed_rho_list, nrs= ntls, photon=True) # 1 spins and a photon
+#            rho_spin_rdms = rho_spin[0] 
             
             from indices import indices_elements
 
-            def product_rho_wavefunction(wavefunction, rho_ss): 
-                shape = nphot*(ntls+1)
-                C_out_array = np.zeros(shape, dtype = complex)
-                C_out = 0 
-                for n_l in range(nphot): 
-                    for n_r in range(nphot): 
-                        for lambda_ in range(len(indices_elements)): 
-                                
-                            m_lam_r = M_index_l[lambda_]
-                            m_lam_l = M_index_r[lambda_]
-                            element_index = ldim_p*len(indices_elements)*n_l + len(indices_elements)*n_r+ lambda_ 
-                            combined_C_r_index = n_r + nphot*(m_lam_l )
-                            combined_C_l_index = n_l + nphot*(m_lam_r)
-                            
-                            C_out_array[combined_C_l_index] += M[0][lambda_] * wavefunction[combined_C_r_index]  *rho_ss[element_index]  
-                                            
-
-                return C_out_array
-            
-            from basis import setup_rho
-            identity_phot = qeye(ldim_p)
-            identity_spin = qeye(ldim_s)
-
-            rho_identity = setup_rho(identity_phot, identity_spin)
-
-
-            # reproducible example of multiplication issue 
-            sample_wavefunction = [1,2,3,4,5,6,7,8]
-            print(f' sample product{product_rho_wavefunction(sample_wavefunction, rho_identity)}')
             
             shapeA = nphot*(ntls+1)
 
