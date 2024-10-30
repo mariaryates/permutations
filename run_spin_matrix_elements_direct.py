@@ -17,7 +17,7 @@ import progressbar
 widgets = [' ', progressbar.Percentage(), ' ',  progressbar.Timer()]
 from qutip import clebsch
 #from scipy.special import binom
-from math import comb
+from math import comb, floor
 import pickle 
 
 
@@ -254,14 +254,10 @@ for partition_index in range(num_partitions):
         })
 
 
-# Enumerate the allowed values of total S, in decreasing order.
-# (No longer used below, since we can just enumerate indices)    
-from math import floor
-S_tot_list = [ntls*0.5 - n for n in range(floor(ntls*0.5+1))]    
-
-# Rearrange Melem_Lambda_S data into a nested data structure
-# so that there's a separate list for each value of S. 
-Melem_byS_data = [[]  for _ in range(len(s_tot_list))]
+# Rearrange Melem_Lambda_S data into a nested data structure so that there's a separate list
+# for each value of S.  Note that floor(ntls*0.5)+1 is how many values of S there are for this
+# ntls
+Melem_byS_data = [[]  for _ in range(floor(ntls*0.5+1))]
 for Melem_entry in Melem_data:
     # Use indexing so largest Stot is index zero, and index decreases Stot
     S_index = floor((ntls*0.5) - Melem_entry['Stot'])
@@ -346,7 +342,6 @@ for S_index in range(floor(ntls*0.5+1)):
     print(test_wf_out)
 
 
-exit
 ######################################################################
 # Test code stops above this
 ######################################################################
@@ -355,45 +350,43 @@ exit
 from scipy.sparse.linalg import LinearOperator 
 
 
-np.random.seed(42) 
-#create a random hermitian rho 
-rho_rand_compr = np.random.rand(80)
-transpose_random_rho = get_rho_transpose(rho_rand_compr, photon = True, spin = True) 
-the_hermitian_rho = rho_rand_compr + transpose_random_rho
-rho_rand_comp = the_hermitian_rho
+np.random.seed(42)
 
-eigenvals_symmetric = [[] for _ in range(len(s_tot_list))]
+#create a random Hermitian rho.  Uses rho_identity from above to get 
+# required size to use for given number of TLS
+rho_rand_compr = np.random.rand(len(rho_identity))
+transpose_random_rho = get_rho_transpose(rho_rand_compr, photon = True, spin = True) 
+rho_rand_comp = rho_rand_compr + transpose_random_rho
+
+eigenvals_symmetric = [[] for _ in range(floor(ntls*0.5+1))]
 import csv
+import scipy
+
 with open('full_eigenvalues_3_2.csv', 'w', newline='') as file:
     writer = csv.writer(file)
 
     total_eigenvalues = []
- 
-    for i in range(len(list_of_m)):
-            list_ = list_of_m[i]
-            M, M_index_l, M_index_r = M_matrix(list_, indices_elements)
-            
-            shape = nphot*(ntls+1) 
-            #setup routines 
 
-            compressed_rho_list = [rho_rand_comp] # get_rdms expects a list of states
-#            rho_spin = get_rdms(compressed_rho_list, nrs= ntls, photon=True) # 1 spins and a photon
-#            rho_spin_rdms = rho_spin[0] 
-            
-            from indices import indices_elements
+    # For each spin sector:
+    for S_index in range(floor(ntls*0.5+1)):
+        # Size of wavefunction to be found, depends on Stot
+        Stot = ntls*0.5 - S_index
+        shape = nphot*floor(2*Stot+1)
+        #setup routines 
 
-            
-            shapeA = nphot*(ntls+1)
-
-            def mv(wavefunction):
-                return product_rho_wavefunction(wavefunction,rho_rand_comp + 5*rho_identity ) 
-            
-            A = LinearOperator((shapeA,shapeA), matvec=mv) 
-            import scipy
-            
-            eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=6, which = 'SA', tol = 1e-6)
+        compressed_rho_list = [rho_rand_comp] # get_rdms expects a list of states
+        # rho_spin = get_rdms(compressed_rho_list, nrs= ntls, photon=True) # 1 spins and a photon
+        # rho_spin_rdms = rho_spin[0] 
+        
+        def mv(psi):
+            return product_rho_wavefunction(psi,rho_rand_comp + 5*rho_identity, S_index) 
+        
+        A = LinearOperator((shape,shape), matvec=mv) 
+        # Note that k must not be larger than shape-1, hence use of minimum here.
+        eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=min(6,shape-2), which = 'SA', tol = 1e-6)
            
-            eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
-            for val in eig_symmetric:
-                total_eigenvalues.append(val)
+        eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
+        for val in eig_symmetric:
+            total_eigenvalues.append(val)
+            
     writer.writerow(np.sort(total_eigenvalues))
