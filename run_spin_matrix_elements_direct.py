@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Mon Jul 15 15:12:56 2024
@@ -39,7 +39,7 @@ def timeit(func, msg, *args):
     print('done ({:.0f}s)'.format(time()-t0))
     return res
 
-ntls=5
+ntls=3
 #ntls = int(sys.argv[1]) # number of TLS
 
 # Split into two almost equal parts (equal if ntls is integer).
@@ -145,7 +145,6 @@ def test_combinatorics(partition):
         
         print(f'Pa:{p_a} count: {p_a_count} Pb:{p_b} count: {p_b_count}')
         
-        
         count+=p_a_count*p_b_count
         
     print(f'Indirect count: {count}')
@@ -180,7 +179,6 @@ for partition_index in range(num_partitions):
     # and right states may be split into two (almost) equal parts.
     U_left  = get_split_spin_transform(m_left)
     U_right = get_split_spin_transform(m_right)
-    
    
     # For a given partition, find the ways of splitting it into two.
     p_a_list = get_partition_divisions(partition)
@@ -248,7 +246,7 @@ for partition_index in range(num_partitions):
         Melem_data.append({
             'lambda': partition_index,
             'Stot': Stot,
-            'mat_elem': np.sqrt(overlap**2),
+            'mat_elem': overlap,
             'm_l': m_left,
             'm_r': m_right
         })
@@ -258,9 +256,11 @@ for partition_index in range(num_partitions):
 # for each value of S.  Note that floor(ntls*0.5)+1 is how many values of S there are for this
 # ntls
 Melem_byS_data = [[]  for _ in range(floor(ntls*0.5+1))]
+
 for Melem_entry in Melem_data:
     # Use indexing so largest Stot is index zero, and index decreases Stot
     S_index = floor((ntls*0.5) - Melem_entry['Stot'])
+
 
     Melem_byS_data[S_index].append(Melem_entry)
 
@@ -270,29 +270,35 @@ for Melem_entry in Melem_data:
 # At present this uses S_index to look up content of list of matrix elements
 # and the value of S.  Alternatively one could pass the data structures 
 # of these things directly to this routine, unsure which is clearer.
+
 def product_rho_wavefunction(psi_in, rho_ss, S_index): 
     # Find value of collective spin S and thus size of wavefunction.
     Stot = ntls*0.5 - S_index
     shape = nphot*floor(2*Stot+1)
-    
+
+
     assert len(psi_in)==shape, "Size of input wavefunction inconsistent with Stot"
     psi_out = np.zeros(shape, dtype = complex)
-    
-    
-    for Melem_entry in Melem_byS_data[S_index]:
-        # The m_l and m_r indices count how many excited spins there
-        # are.  The range of these narrows as one goes to smaller 
-        # total spin, the offset below is so that they are indexed 
-        # from zero in each spin sector (as they are used to index
-        # the wavefunction.)
-        m_lam_r = Melem_entry['m_r'] - S_index
-        m_lam_l = Melem_entry['m_l'] - S_index
-        lambda_ = Melem_entry['lambda']
-        M_value = Melem_entry['mat_elem']
+        
 
-        for n_l in range(nphot): 
-            for n_r in range(nphot): 
-                                
+    for n_l in range(nphot): 
+        for n_r in range(nphot): 
+        
+            for Melem_entry in Melem_byS_data[S_index]:
+                # The m_l and m_r indices count how many excited spins there
+                # are.  The range of these narrows as one goes to smaller 
+                # total spin, the offset below is so that they are indexed 
+                # from zero in each spin sector (as they are used to index
+                # the wavefunction.)
+                
+
+                m_lam_r = Melem_entry['m_l'] - S_index
+                m_lam_l = Melem_entry['m_r'] - S_index
+
+                lambda_ = Melem_entry['lambda']
+                M_value = Melem_entry['mat_elem']
+                print("M_value", M_value)
+                                    
                 # Work out indices into objects including photon effects
                 rho_index = ldim_p*num_partitions*n_l + num_partitions*n_r + lambda_
                 psi_r_index = n_r + nphot*(m_lam_l )
@@ -302,6 +308,9 @@ def product_rho_wavefunction(psi_in, rho_ss, S_index):
 
     return psi_out
 
+# TO DO: Verify degeneracy function when home. 
+def degeneracy(N, S):
+    return comb(N, int(N/2 - S)) - comb(N, int(N/2 - S - 1))
 
 ######################################################################
 # Test code to check identities.
@@ -351,7 +360,6 @@ from scipy.sparse.linalg import LinearOperator
 
 
 np.random.seed(42)
-
 #create a random Hermitian rho.  Uses rho_identity from above to get 
 # required size to use for given number of TLS
 rho_rand_compr = np.random.rand(len(rho_identity))
@@ -362,7 +370,7 @@ eigenvals_symmetric = [[] for _ in range(floor(ntls*0.5+1))]
 import csv
 import scipy
 
-with open('full_eigenvalues_3_2.csv', 'w', newline='') as file:
+with open('my_eigenvalues.csv', 'w', newline='') as file:
     writer = csv.writer(file)
 
     total_eigenvalues = []
@@ -373,20 +381,40 @@ with open('full_eigenvalues_3_2.csv', 'w', newline='') as file:
         Stot = ntls*0.5 - S_index
         shape = nphot*floor(2*Stot+1)
         #setup routines 
-
         compressed_rho_list = [rho_rand_comp] # get_rdms expects a list of states
+
         # rho_spin = get_rdms(compressed_rho_list, nrs= ntls, photon=True) # 1 spins and a photon
-        # rho_spin_rdms = rho_spin[0] 
+        # rho_spin_rdms = rho_spin[0]
         
         def mv(psi):
             return product_rho_wavefunction(psi,rho_rand_comp + 5*rho_identity, S_index) 
         
         A = LinearOperator((shape,shape), matvec=mv) 
         # Note that k must not be larger than shape-1, hence use of minimum here.
-        eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=min(6,shape-2), which = 'SA', tol = 1e-6)
-           
-        eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
-        for val in eig_symmetric:
-            total_eigenvalues.append(val)
-            
+
+
+        #TODO: More efficiency 
+
+        if Stot != ntls*0.5:
+
+            deg = degeneracy(ntls, Stot)
+
+            for i in range(deg): 
+                eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=min(6,shape-2), which = 'SA', tol = 1e-6)
+                eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
+                for val in eig_symmetric:
+                    total_eigenvalues.append(val)
+        
+        else: 
+            eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=min(6,shape-2), which = 'SA', tol = 1e-6)
+            eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
+            for val in eig_symmetric:
+                total_eigenvalues.append(val)
+        
     writer.writerow(np.sort(total_eigenvalues))
+
+
+
+
+
+

@@ -17,6 +17,17 @@ from qutip.partial_transpose import partial_transpose
 import csv
 from scipy.sparse.linalg import LinearOperator 
 from functions import M_matrix_symmetric
+from indices import list_equivalent_elements as list_equivalent_elements_original
+
+ntls = 3
+nphot = 2
+setup_basis(ntls, 2, nphot)
+from basis import  nspins, ldim_p, ldim_s
+
+list_equivalent_elements_original()
+setup_convert_rho()
+setup_convert_rho_nrs(ntls) 
+
 
 np.random.seed(42) 
 #create a random hermitian rho 
@@ -25,12 +36,11 @@ transpose_random_rho = get_rho_transpose(rho_rand_compr, photon = True, spin = T
 the_hermitian_rho = rho_rand_compr + transpose_random_rho
 rho_rand_comp = the_hermitian_rho
 
+print(rho_rand_comp)
+
 
 spin_left = 3
 eigenvals_symmetric = [[] for _ in range(1)]
-
-
-
 
 
 for i in range(1): 
@@ -54,8 +64,8 @@ for i in range(1):
     from indices import indices_elements
 
     M, M_index_l, M_index_r = M_matrix_symmetric(indices_elements, ntls)
-    print(M, M_index_l, M_index_r)
-
+    print('symmetric M ')
+    print(M)
     def product_rho_wavefunction(wavefunction, rho_ss): 
     
     
@@ -93,6 +103,10 @@ for i in range(1):
             
                     C_out_array[combined_C_l_index] += M[lambda_] * wavefunction[combined_C_r_index]  *rho_ss[element_index] 
 
+                    print(f"m_lam_r: {m_lam_r}, m_lam_l: {m_lam_l}, lambda_: {lambda_}, M {M[lambda_]}")
+                    # print(f"M_value: {M[lambda_]}, psi_in[psi_r_index]: {wavefunction[combined_C_r_index]}, rho_ss[rho_index]: {rho_ss[element_index]}")
+
+
 
         return C_out_array
 
@@ -118,6 +132,9 @@ for i in range(1):
     
 eigenvalues_symmetric_list = eigenvals_symmetric[0][0]
 
-with open('symmetric_eigenvalues_3_2.csv', 'w', newline='') as file:
+with open('symmetric_eigenvalues.csv', 'w', newline='') as file:
     writer = csv.writer(file)
-    writer.writerow(eigenvalues_symmetric_list)  # Writing as a single row
+    writer.writerow(np.sort(eigenvalues_symmetric_list))  # Writing as a single row
+
+output = product_rho_wavefunction([1,2,3,4,5,6,7,8],rho_rand_comp)
+print(f' product of rho and wf {output}')

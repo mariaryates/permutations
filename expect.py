@@ -5,14 +5,15 @@ from itertools import permutations
 
 
 def get_rho_transpose(rho, photon = False, spin = False): 
-
     from indices import indices_elements, index_transpose_map 
     from basis import ldim_p 
     ldim_p = 2
     rho_len = len(rho)
     new_rho = np.zeros(rho_len)
+
     for count_p1 in range(ldim_p):
         for count_p2 in range(ldim_p):
+      
             for count in range(len(indices_elements)):
                 element_index = ldim_p*len(indices_elements)*count_p1 + len(indices_elements)*count_p2 + count
                 
@@ -28,7 +29,7 @@ def get_rho_transpose(rho, photon = False, spin = False):
                 else: 
                     new_count = count 
                     # replace rhos 
-                
+            
                 new_element_index = ldim_p*len(indices_elements)*new_count_p1+ len(indices_elements)*new_count_p2 + new_count
                 
 

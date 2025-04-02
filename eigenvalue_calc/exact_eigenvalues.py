@@ -14,7 +14,19 @@ from propagate import time_evolve, steady
 from expect import expect_comp, setup_convert_rho, setup_convert_rho_nrs, get_rdms, setup_convert_rhos_from_ops, get_rho_transpose
 from indices import list_equivalent_elements
 from qutip.partial_transpose import partial_transpose
+from indices import list_equivalent_elements as list_equivalent_elements_original
+
 import csv
+ntls = 3
+nphot = 2
+setup_basis(ntls, 2, nphot)
+from basis import  nspins, ldim_p, ldim_s
+
+list_equivalent_elements_original()
+setup_convert_rho()
+setup_convert_rho_nrs(ntls) 
+
+
 
 np.random.seed(42) 
 #create a random hermitian rho 
@@ -22,7 +34,6 @@ rho_rand_compr = np.random.rand(80)
 transpose_random_rho = get_rho_transpose(rho_rand_compr, photon = True, spin = True) 
 the_hermitian_rho = rho_rand_compr + transpose_random_rho
 rho_rand_comp = the_hermitian_rho
-
 
 spin_left = 3
 eigenvals_EXACT = [[] for _ in range(1)]
@@ -40,11 +51,11 @@ for i in range(1):
     from basis import nspins, ldim_p, ldim_s
 
     setup_convert_rho_nrs(ntls) 
-
+    print(rho_rand_comp)
     compressed_rho_list = [rho_rand_comp] # get_rdms expects a list of states
     rho_spin = get_rdms(compressed_rho_list, nrs= ntls, photon=True) # 1 spins and a photon
     rho_spin_rdms = rho_spin[0] 
-    
+
 # conversion to qt objects
     ldim_list = [ldim_p] + [ldim_s] * (ntls) 
     rho_qt = qt.Qobj(rho_spin_rdms, dims = [ldim_list, ldim_list] )
@@ -58,7 +69,8 @@ for i in range(1):
 
 eigenvalues_exact_list = eigenvals_EXACT[0][0]
 
-with open('exact_eigenvalues_3_2.csv', 'w', newline='') as file:
+
+with open('qutip_eigenvalues.csv', 'w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow(eigenvalues_exact_list)  # Writing as a single row
 
