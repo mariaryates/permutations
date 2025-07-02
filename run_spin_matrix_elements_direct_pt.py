@@ -272,7 +272,7 @@ for Melem_entry in Melem_data:
 # and the value of S.  Alternatively one could pass the data structures 
 # of these things directly to this routine, unsure which is clearer.
 
-def product_rho_wavefunction(psi_in, rho_ss, S_index): 
+def product_rho_wavefunction_pt(psi_in, rho_ss, S_index): 
     # Find value of collective spin S and thus size of wavefunction.
     Stot = ntls*0.5 - S_index
     shape = nphot*floor(2*Stot+1)
@@ -282,8 +282,8 @@ def product_rho_wavefunction(psi_in, rho_ss, S_index):
     psi_out = np.zeros(shape, dtype = complex)
         
 
-    for n_l in range(nphot): 
-        for n_r in range(nphot): 
+    for n_r in range(nphot): 
+        for n_l in range(nphot): 
         
             for Melem_entry in Melem_byS_data[S_index]:
                 # The m_l and m_r indices count how many excited spins there
@@ -345,7 +345,7 @@ for S_index in range(floor(ntls*0.5+1)):
     shape = nphot*floor(2*Stot+1)
 
     test_wf_in = [1.0*(n+1) for n in range(shape)]
-    test_wf_out = product_rho_wavefunction(test_wf_in, rho_identity, S_index)
+    test_wf_out = product_rho_wavefunction_pt(test_wf_in, rho_identity, S_index)
 
     # Print to see if input = output
     print(test_wf_in)
@@ -363,7 +363,7 @@ from scipy.sparse.linalg import LinearOperator
 np.random.seed(42)
 #create a random Hermitian rho.  Uses rho_identity from above to get 
 # required size to use for given number of TLS
-rho_rand_compr = np.random.rand(len(rho_identity))
+rho_rand_compr = 2*np.random.rand(len(rho_identity)) -1 
 transpose_random_rho = get_rho_transpose(rho_rand_compr, photon = True, spin = True) 
 rho_rand_comp = rho_rand_compr + transpose_random_rho
 
@@ -371,6 +371,9 @@ import csv
 with open('rho_ss.csv', 'w', newline = '') as file: 
         writer = csv.writer(file)
         writer.writerow(rho_rand_comp)
+
+print(rho_rand_comp)
+print(type(rho_rand_comp))
 
 eigenvals_symmetric = [[] for _ in range(floor(ntls*0.5+1))]
 import csv
@@ -392,7 +395,7 @@ with open('data.tmp/my_eigenvalues.csv', 'w', newline='') as file:
         # rho_spin_rdms = rho_spin[0]
         
         def mv(psi):
-            return product_rho_wavefunction(psi,rho_rand_comp + 5*rho_identity, S_index) 
+            return product_rho_wavefunction_pt(psi,rho_rand_comp + 5*rho_identity, S_index) 
         
         A = LinearOperator((shape,shape), matvec=mv) 
         # Note that k must not be larger than shape-1, hence use of minimum here.
