@@ -17,18 +17,20 @@ from indices import list_equivalent_elements
 
 
 
-#specify system size & establish a dictionary 
+#establish a dictionary 
+
 params = {
-    'ntls': 2,
-    'nphot': 3, 
-    'omega0':1.0,
-    'omega':0.5,
-    'U':0, 
-    'kappa': 1, 
-    'gam_phi':0, 
-    'gam_dn':1, 
-    'col_gam_dn':0, 
+    'ntls': int(sys.argv[4]),
+    'nphot': int(sys.argv[5]), 
+    'omega0':float(sys.argv[6]),
+    'omega':float(sys.argv[7]),
+    'U':float(sys.argv[8]), 
+    'kappa': float(sys.argv[9]), 
+    'gam_phi':float(sys.argv[10]), 
+    'gam_dn':float(sys.argv[11]), 
+    'col_gam_dn':float(sys.argv[12]), 
               }
+
 
 # specify variables for ntls and nphot
 ntls = params['ntls']
@@ -172,8 +174,8 @@ for g in g_vals:
     na = tensor(create(ldim_p)*destroy(ldim_p), qeye(ldim_s))
     sz = tensor(qeye(ldim_p), sigmaz())
  
-    tmax = 10
-    dt = 0.1
+    tmax = 200
+    dt = 0.01
     rho_ss_te =time_evolve(L, initial, tmax, dt, [na, sz] )
     print('time evolved')
     
@@ -188,32 +190,27 @@ for g in g_vals:
     file_path = f'ntls_{ntls}_nphot_{nphot}_g_{g}.pkl'
     save_nearest_state(file_path, rho_ss, g)
 
-    
-    
-
-
-
 
 # =============================================================================
-# 
+
     
 # def load_pickle(file_path):
 #    with open(file_path, 'rb') as f:
 #        data = pickle.load(f)
 #    return data
 
-# file_path = 'ntls_2_nphot_3_g_2.0.pkl'
+# file_path = f'ntls_{ntls}_nphot_{nphot}_g_{g}.pkl'
 # data = load_pickle(file_path)
-# 
+
 # print("Contents of the pickle file:")
 # print(data)
-# 
-#     
-# file_path = 'ntls_2_nphot_3_g_3.0.pkl'
+
+    
+# file_path = f'ntls_2_nphot_3_g_3.0.pkl'
 # data = load_pickle(file_path)
-# 
+
 # print("Contents of the pickle file:")
 # print(data)  
-# 
+
 # print('Done')
 # =============================================================================
