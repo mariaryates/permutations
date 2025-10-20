@@ -241,7 +241,7 @@ for partition_index in range(num_partitions):
     for iS in range(size):
         Stot=mz_max+iS
         overlap=melem[iS]
-        print(f'lambda={partition_index:4d}, partitions={partition}, S={Stot},    overlap=sqrt({overlap**2:.2f})')
+        # print(f'lambda={partition_index:4d}, partitions={partition}, S={Stot},    overlap=sqrt({overlap**2:.2f})')
 
         
         Melem_data.append({
@@ -272,7 +272,7 @@ for Melem_entry in Melem_data:
 # and the value of S.  Alternatively one could pass the data structures 
 # of these things directly to this routine, unsure which is clearer.
 
-def product_rho_wavefunction(psi_in, rho_ss, S_index): 
+def product_rho_wavefunction_pt(psi_in, rho_ss, S_index): 
     # Find value of collective spin S and thus size of wavefunction.
     Stot = ntls*0.5 - S_index
     shape = nphot*floor(2*Stot+1)
@@ -282,8 +282,8 @@ def product_rho_wavefunction(psi_in, rho_ss, S_index):
     psi_out = np.zeros(shape, dtype = complex)
         
 
-    for n_l in range(nphot): 
-        for n_r in range(nphot): 
+    for n_r in range(nphot): 
+        for n_l in range(nphot): 
         
             for Melem_entry in Melem_byS_data[S_index]:
                 # The m_l and m_r indices count how many excited spins there
@@ -298,12 +298,11 @@ def product_rho_wavefunction(psi_in, rho_ss, S_index):
 
                 lambda_ = Melem_entry['lambda']
                 M_value = Melem_entry['mat_elem']
-                print("M_value", M_value)
                                     
                 # Work out indices into objects including photon effects
                 rho_index = ldim_p*num_partitions*n_l + num_partitions*n_r + lambda_
-                psi_r_index = n_r + nphot*(m_lam_l )
-                psi_l_index = n_l + nphot*(m_lam_r)
+                psi_r_index = n_l + nphot*(m_lam_l )
+                psi_l_index = n_r + nphot*(m_lam_r)
 
                 psi_out[psi_l_index] += M_value * psi_in[psi_r_index] * rho_ss[rho_index]  
 
@@ -345,11 +344,11 @@ for S_index in range(floor(ntls*0.5+1)):
     shape = nphot*floor(2*Stot+1)
 
     test_wf_in = [1.0*(n+1) for n in range(shape)]
-    test_wf_out = product_rho_wavefunction(test_wf_in, rho_identity, S_index)
+    test_wf_out = product_rho_wavefunction_pt(test_wf_in, rho_identity, S_index)
 
     # Print to see if input = output
-    print(test_wf_in)
-    print(test_wf_out)
+    # print(test_wf_in)
+    # print(test_wf_out)
 
 
 ######################################################################
@@ -360,23 +359,30 @@ for S_index in range(floor(ntls*0.5+1)):
 from scipy.sparse.linalg import LinearOperator 
 
 
-np.random.seed(42)
-#create a random Hermitian rho.  Uses rho_identity from above to get 
-# required size to use for given number of TLS
-rho_rand_compr = np.random.rand(len(rho_identity))
-transpose_random_rho = get_rho_transpose(rho_rand_compr, photon = True, spin = True) 
-rho_rand_comp = rho_rand_compr + transpose_random_rho
+# np.random.seed(42)
+# #create a random Hermitian rho.  Uses rho_identity from above to get 
+# # required size to use for given number of TLS
+# rho_rand_compr = 2*np.random.rand(len(rho_identity)) -1 
+# transpose_random_rho = get_rho_transpose(rho_rand_compr, photon = True, spin = True) 
+# rho_rand_comp = rho_rand_compr + transpose_random_rho
 
+# import csv
+# with open('rho_ss.csv', 'w', newline = '') as file: 
+#         writer = csv.writer(file)
+#         writer.writerow(rho_rand_comp)
 import csv
-with open('rho_ss.csv', 'w', newline = '') as file: 
-        writer = csv.writer(file)
-        writer.writerow(rho_rand_comp)
 
+with open('rho_steady_state.csv', 'r') as file:
+    reader = csv.reader(file)
+    data = [[complex(cell) for cell in row] for row in reader]
+
+# Convert to flat 1D complex array
+rho_steady_state = np.array(data, dtype=np.complex128).flatten()
 eigenvals_symmetric = [[] for _ in range(floor(ntls*0.5+1))]
 import csv
 import scipy
 
-with open('data.tmp/my_eigenvalues.csv', 'w', newline='') as file:
+with open('data.tmp/my_eigenvalues_ss.csv', 'w', newline='') as file:
     writer = csv.writer(file)
 
     total_eigenvalues = []
@@ -386,13 +392,13 @@ with open('data.tmp/my_eigenvalues.csv', 'w', newline='') as file:
     for S_index in range(floor(ntls*0.5+1)):
         Stot = ntls*0.5 - S_index
         shape = nphot*floor(2*Stot+1)
-        compressed_rho_list = [rho_rand_comp] # get_rdms expects a list of states
+        compressed_rho_list = [rho_steady_state] # get_rdms expects a list of states
    
         # rho_spin = get_rdms(compressed_rho_list, nrs= ntls, photon=True) # 1 spins and a photon
         # rho_spin_rdms = rho_spin[0]
         
         def mv(psi):
-            return product_rho_wavefunction(psi,rho_rand_comp + 5*rho_identity, S_index) 
+            return product_rho_wavefunction_pt(psi,rho_steady_state + 5*rho_identity, S_index) 
         
         A = LinearOperator((shape,shape), matvec=mv) 
         # Note that k must not be larger than shape-1, hence use of minimum here.
@@ -428,7 +434,12 @@ with open('data.tmp/my_eigenvalues.csv', 'w', newline='') as file:
         
     writer.writerow([str(val) for val in np.sort(total_eigenvalues)])
 
-output_filename = "data.tmp/spin_eigenvalues.txt"
+# output_filename = "data.tmp/spin_eigenvalues_ss.txt"
+# with open(output_filename, "w") as f:
+#     for spin, eigenvalue in spin_audit:
+#         f.write(f"{spin}\t{eigenvalue}\n")
+
+output_filename = f"data.tmp/spin_eigenvalues_ss_{ntls}_{nphot}.txt"
 with open(output_filename, "w") as f:
     for spin, eigenvalue in spin_audit:
-        f.write(f"{spin}\t{eigenvalue}\n")
+        f.write(f"{spin},{eigenvalue}\n")
