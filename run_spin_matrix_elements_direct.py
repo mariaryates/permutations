@@ -352,86 +352,91 @@ for S_index in range(floor(ntls*0.5+1)):
 
 
 ######################################################################
-# Test code stops above this
+# Code for testing eigenvalue finding etc.
 ######################################################################
 
 
 from scipy.sparse.linalg import LinearOperator 
-
-
-# np.random.seed(42)
-# #create a random Hermitian rho.  Uses rho_identity from above to get 
-# # required size to use for given number of TLS
-# rho_rand_compr = 2*np.random.rand(len(rho_identity)) -1 
-# transpose_random_rho = get_rho_transpose(rho_rand_compr, photon = True, spin = True) 
-# rho_rand_comp = rho_rand_compr + transpose_random_rho
-
-# import csv
-# with open('rho_ss.csv', 'w', newline = '') as file: 
-#         writer = csv.writer(file)
-#         writer.writerow(rho_rand_comp)
 import csv
 
-with open('rho_steady_state.csv', 'r') as file:
-    reader = csv.reader(file)
-    data = [[complex(cell) for cell in row] for row in reader]
+# Use filename from path if present
+if len(sys.argv) > 3:
+    filename = sys.argv[3]
+else:
+    filename='rho_steady_state.csv'
+use_random_state=not()
 
-# Convert to flat 1D complex array
-rho_steady_state = np.array(data, dtype=np.complex128).flatten()
-eigenvals_symmetric = [[] for _ in range(floor(ntls*0.5+1))]
-import csv
+if (os.path.exists(filename)):
+    
+    with open(filename, 'r') as file:
+        reader = csv.reader(file)
+        data = [[complex(cell) for cell in row] for row in reader]
+
+        # Convert to flat 1D complex array
+        rho = np.array(data, dtype=np.complex128).flatten()    
+
+else:
+    np.random.seed(42)
+    
+    # Create a random Hermitian rho.  Uses rho_identity from above to get 
+    # required size to use for given number of TLS
+    rho_temp = 2*np.random.rand(len(rho_identity)) -1 
+    rho_temp_tr = get_rho_transpose(rho_temp, photon = True, spin = True) 
+    rho = rho_temp + rho_temp_tr
+
+compressed_rho_list = [rho] # get_rdms expects a list of states
+
+
 import scipy
 
-with open('data.tmp/my_eigenvalues_ss.csv', 'w', newline='') as file:
-    writer = csv.writer(file)
+eigenvals_symmetric = [[] for _ in range(floor(ntls*0.5+1))]
+total_eigenvalues = []
+spin_audit = []
 
-    total_eigenvalues = []
-    spin_audit = []
+# For each spin sector:
+for S_index in range(floor(ntls*0.5+1)):
+    Stot = ntls*0.5 - S_index
+    shape = nphot*floor(2*Stot+1)
 
-    # For each spin sector:
-    for S_index in range(floor(ntls*0.5+1)):
-        Stot = ntls*0.5 - S_index
-        shape = nphot*floor(2*Stot+1)
-        compressed_rho_list = [rho_steady_state] # get_rdms expects a list of states
-   
-        # rho_spin = get_rdms(compressed_rho_list, nrs= ntls, photon=True) # 1 spins and a photon
-        # rho_spin_rdms = rho_spin[0]
-        
-        def mv(psi):
-            return product_rho_wavefunction_pt(psi,rho_steady_state + 5*rho_identity, S_index) 
-        
-        A = LinearOperator((shape,shape), matvec=mv) 
-        # Note that k must not be larger than shape-1, hence use of minimum here.
+    # rho_spin = get_rdms(compressed_rho_list, nrs= ntls, photon=True) # 1 spins and a photon
+    # rho_spin_rdms = rho_spin[0]
 
-        #TODO: More efficiency 
+    def mv(psi):
+        return product_rho_wavefunction_pt(psi,rho + 5*rho_identity, S_index) 
 
-        if Stot != ntls*0.5:
+    A = LinearOperator((shape,shape), matvec=mv) 
+    # Note that k must not be larger than shape-1, hence use of minimum here.
+
+    #TODO: More efficiency 
+
+    if Stot != ntls*0.5:
 
 
-            deg = degeneracy(ntls, Stot)
+        deg = degeneracy(ntls, Stot)
 
-            for i in range(deg): 
-                eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=shape-2, which = 'SA', tol = 1e-7)
-                eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
-                for val in eig_symmetric:
-                    total_eigenvalues.append(val)
-                    spin_audit.append((Stot, val))
-        
-        else: 
-            # eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=min(6,shape-2), which = 'SA', tol = 1e-7)
+        for i in range(deg): 
             eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=shape-2, which = 'SA', tol = 1e-7)
             eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
             for val in eig_symmetric:
                 total_eigenvalues.append(val)
                 spin_audit.append((Stot, val))
 
+    else: 
+        # eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=min(6,shape-2), which = 'SA', tol = 1e-7)
+        eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=shape-2, which = 'SA', tol = 1e-7)
+        eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
+        for val in eig_symmetric:
+            total_eigenvalues.append(val)
+            spin_audit.append((Stot, val))
 
-        # eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=min(6,shape-2), which = 'SA', tol = 1e-6)
-        # eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
-        # for val in eig_symmetric:
-        #     total_eigenvalues.append(val)
 
-        
+    # eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=min(6,shape-2), which = 'SA', tol = 1e-6)
+    # eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
+    # for val in eig_symmetric:
+    #     total_eigenvalues.append(val)
+
+with open('data.tmp/my_eigenvalues_ss.csv', 'w', newline='') as file:
+    writer = csv.writer(file)
     writer.writerow([str(val) for val in np.sort(total_eigenvalues)])
 
 # output_filename = "data.tmp/spin_eigenvalues_ss.txt"
