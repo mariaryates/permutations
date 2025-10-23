@@ -10,8 +10,13 @@ import numpy as np
 from time import time
 import pickle 
 
-from basis import setup_basis
+from basis import setup_basis, setup_rho
 from indices import list_equivalent_elements
+
+from math import comb, floor
+
+from expect import get_rho_transpose, setup_convert_rho, setup_convert_rho_nrs
+from operators import qeye 
 
 from spin_matrix_elements import setup_matrix_elements, product_rho_wavefunction_pt
 
@@ -24,7 +29,7 @@ nphot = int(sys.argv[2])
 setup_basis(ntls, 2, nphot)
 from basis import  nspins, ldim_p, ldim_s
 
-list_equivalent_elements_original()
+list_equivalent_elements()
 setup_convert_rho()
 setup_convert_rho_nrs(ntls) 
 
@@ -51,10 +56,7 @@ def degeneracy(N, S):
 
 # reproducible example of multiplication issue: Create identity
 # density matrix and then test multiplying a wavefunction by this.
-from indices import list_equivalent_elements as list_equivalent_elements_original
-from basis import setup_basis, setup_rho
-from expect import get_rho_transpose, setup_convert_rho, setup_convert_rho_nrs
-from operators import qeye 
+
 
 # Create a test wavefunction in each spin sector
 for S_index in range(floor(ntls*0.5+1)):

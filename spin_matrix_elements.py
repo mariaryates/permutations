@@ -6,8 +6,6 @@ using such matrix elements
 
 import numpy as np
 from math import comb, floor
-from indices import indices_elements
-from basis import nspins
 
 ns_a=0
 ns_b=0
@@ -16,13 +14,15 @@ Sb=0.0
 
 Melem_data = []
 Melem_byS_data = []
-
+num_partitions=0
 
 def setup_matrix_elements():
+    from basis import nspins
+    from indices import indices_elements
 
-    global Melem_data, Melem_byS_data
+    global Melem_data, Melem_byS_data, num_partitions
     
-    assert ntls>0, "ntls (in basis) must be set before setup_matrix_elements"
+    assert nspins>0, "ntls (in basis) must be set before setup_matrix_elements"
     assert len(indices_elements) > 0, "indices_elements in indices must be setup before setup_matrix elements"
     
     num_partitions = len(indices_elements)
@@ -141,6 +141,8 @@ def setup_matrix_elements():
 
 
 def get_partitions(left, right):
+    from basis import nspins
+
     """Count the partitions of nspins into values"""
     combined = [2*left[i]+right[i] for i in range(nspins)]
     partitions=[]
@@ -150,6 +152,7 @@ def get_partitions(left, right):
     return partitions
     
 def get_split_spin_CG_array(num_excited,Sa,Sb):
+    from basis import nspins
 
     """Get the array of CG coefficients for how to split this m state into two """
     from qutip import clebsch
@@ -242,17 +245,18 @@ def test_combinatorics(partition,ns_a):
 # of these things directly to this routine, unsure which is clearer.
 
 def product_rho_wavefunction_pt(psi_in, rho_ss, S_index): 
+    from basis import nspins, ldim_p
     # Find value of collective spin S and thus size of wavefunction.
     Stot = nspins*0.5 - S_index
-    shape = nphot*floor(2*Stot+1)
+    shape = ldim_p*floor(2*Stot+1)
 
 
     assert len(psi_in)==shape, "Size of input wavefunction inconsistent with Stot"
     psi_out = np.zeros(shape, dtype = complex)
         
 
-    for n_r in range(nphot): 
-        for n_l in range(nphot): 
+    for n_r in range(ldim_p): 
+        for n_l in range(ldim_p): 
         
             for Melem_entry in Melem_byS_data[S_index]:
                 # The m_l and m_r indices count how many excited spins there
@@ -270,8 +274,8 @@ def product_rho_wavefunction_pt(psi_in, rho_ss, S_index):
                                     
                 # Work out indices into objects including photon effects
                 rho_index = ldim_p*num_partitions*n_l + num_partitions*n_r + lambda_
-                psi_r_index = n_l + nphot*(m_lam_l )
-                psi_l_index = n_r + nphot*(m_lam_r)
+                psi_r_index = n_l + ldim_p*(m_lam_l )
+                psi_l_index = n_r + ldim_p*(m_lam_r)
 
                 psi_out[psi_l_index] += M_value * psi_in[psi_r_index] * rho_ss[rho_index]  
 
