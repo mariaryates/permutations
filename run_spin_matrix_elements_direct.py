@@ -153,7 +153,8 @@ for S_index in range(floor(ntls*0.5+1)):
     spin_audit += audit_list*deg
 
             
-with open('data.tmp/my_eigenvalues_ss.csv', 'w', newline='') as file:
+output_filename = f"data.tmp/my_eigenvalues_ss_{ntls}_{nphot}.csv"
+with open(output_filename, 'w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow([str(val) for val in np.sort(total_eigenvalues)])
 
