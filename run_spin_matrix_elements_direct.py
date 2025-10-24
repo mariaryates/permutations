@@ -44,8 +44,10 @@ setup_matrix_elements()
 
 
 
-
-# TO DO: Verify degeneracy function when home. 
+# Calculate the degeneracy of a given spin modulus, S, for N spins.
+# (This is the number of bounded walks through the lattice of intermediate
+# spin configurations that end at S).
+# Note from Yates: Double check this identity
 def degeneracy(N, S):
     return comb(N, int(N/2 - S)) - comb(N, int(N/2 - S - 1))
 
@@ -53,22 +55,22 @@ def degeneracy(N, S):
 # Test code to check identities.
 ######################################################################
 
-
-# reproducible example of multiplication issue: Create identity
-# density matrix and then test multiplying a wavefunction by this.
+# Note from yates:
 
 
-# Create a test wavefunction in each spin sector
-for S_index in range(floor(ntls*0.5+1)):
-    Stot = ntls*0.5 - S_index
-    shape = nphot*floor(2*Stot+1)
+# # Create a test wavefunction in each spin sector  and test multiplication
+# for S_index in range(floor(ntls*0.5+1)):
+#     Stot = ntls*0.5 - S_index
+#     shape = nphot*floor(2*Stot+1)
 
-    test_wf_in = [1.0*(n+1) for n in range(shape)]
-    test_wf_out = product_rho_wavefunction_pt(test_wf_in, rho_identity, S_index)
+#     test_wf_in = [1.0*(n+1) for n in range(shape)]
+#     test_wf_out = product_rho_wavefunction_pt(test_wf_in, rho_identity, S_index)
 
-    # Print to see if input = output
-    # print(test_wf_in)
-    # print(test_wf_out)
+#     # Print to see if input = output
+#     print("### Testing S=",Stot)
+#     print(test_wf_in)
+#     print(test_wf_out)
+
 
 
 ######################################################################
@@ -87,7 +89,7 @@ else:
 use_random_state=not()
 
 if (os.path.exists(filename)):
-    
+    # Read the wavefunction from the given file
     with open(filename, 'r') as file:
         reader = csv.reader(file)
         data = [[complex(cell) for cell in row] for row in reader]
@@ -96,11 +98,14 @@ if (os.path.exists(filename)):
         rho = np.array(data, dtype=np.complex128).flatten()    
 
 else:
+    # Create a random wavefunction
+    # (currently using fixed seed for repeatibility)
     np.random.seed(42)
     
     # Create a random Hermitian rho.  Uses rho_identity from above to get 
     # required size to use for given number of TLS
-    rho_temp = 2*np.random.rand(len(rho_identity)) -1 
+    rho_temp = 2*np.random.rand(len(rho_identity)) -1
+    print (len(rho_temp), len(rho_identity))
     rho_temp_tr = get_rho_transpose(rho_temp, photon = True, spin = True) 
     rho = rho_temp + rho_temp_tr
 
@@ -118,9 +123,7 @@ for S_index in range(floor(ntls*0.5+1)):
     Stot = ntls*0.5 - S_index
     shape = nphot*floor(2*Stot+1)
 
-    # rho_spin = get_rdms(compressed_rho_list, nrs= ntls, photon=True) # 1 spins and a photon
-    # rho_spin_rdms = rho_spin[0]
-
+    # Define matrix-vector operation on a vector psi.
     def mv(psi):
         return product_rho_wavefunction_pt(psi,rho + 5*rho_identity, S_index) 
 
