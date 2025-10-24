@@ -108,7 +108,6 @@ else:
     # Create a random Hermitian rho.  Uses rho_identity from above to get 
     # required size to use for given number of TLS
     rho_temp = 2*np.random.rand(len(rho_identity)) -1
-    print (len(rho_temp), len(rho_identity))
     rho_temp_tr = get_rho_transpose(rho_temp, photon = True, spin = True) 
     rho = rho_temp + rho_temp_tr
 
@@ -157,11 +156,6 @@ output_filename = f"data.tmp/my_eigenvalues_ss_{ntls}_{nphot}.csv"
 with open(output_filename, 'w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow([str(val) for val in np.sort(total_eigenvalues)])
-
-# output_filename = "data.tmp/spin_eigenvalues_ss.txt"
-# with open(output_filename, "w") as f:
-#     for spin, eigenvalue in spin_audit:
-#         f.write(f"{spin}\t{eigenvalue}\n")
 
 output_filename = f"data.tmp/spin_eigenvalues_ss_{ntls}_{nphot}.txt"
 with open(output_filename, "w") as f:
