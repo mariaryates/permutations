@@ -31,17 +31,21 @@ from basis import  nspins, ldim_p, ldim_s
 
 list_equivalent_elements()
 setup_convert_rho()
-setup_convert_rho_nrs(ntls) 
+# Unless performing brute-force calculations, do not need point expectations
+#setup_convert_rho_nrs(ntls) 
 
 identity_phot = qeye(ldim_p)
 identity_spin = qeye(ldim_s)
 
 rho_identity = setup_rho(identity_phot, identity_spin)
 
+print("Basis setup complete")
+
 # Set up matrix elements
 
 setup_matrix_elements()
 
+print("Matrix element calculations complete")
 
 
 # Calculate the degeneracy of a given spin modulus, S, for N spins.
@@ -58,7 +62,6 @@ def degeneracy(N, S):
 # Test code to check identities.
 ######################################################################
 
-# Note from yates:
 
 
 # # Create a test wavefunction in each spin sector  and test multiplication
