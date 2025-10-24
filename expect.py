@@ -7,7 +7,7 @@ from itertools import permutations
 def get_rho_transpose(rho, photon = False, spin = False): 
     from indices import indices_elements, index_transpose_map 
     from basis import ldim_p 
-    ldim_p = 2
+
     rho_len = len(rho)
     new_rho = np.zeros(rho_len)
 
