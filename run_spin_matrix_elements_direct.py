@@ -49,7 +49,10 @@ setup_matrix_elements()
 # spin configurations that end at S).
 # Note from Yates: Double check this identity
 def degeneracy(N, S):
-    return comb(N, int(N/2 - S)) - comb(N, int(N/2 - S - 1))
+    if (N == 2*S):
+        return 1
+    else:
+        return comb(N, int(N/2 - S)) - comb(N, int(N/2 - S - 1))
 
 ######################################################################
 # Test code to check identities.
@@ -123,6 +126,10 @@ for S_index in range(floor(ntls*0.5+1)):
     Stot = ntls*0.5 - S_index
     shape = nphot*floor(2*Stot+1)
 
+    # Number of eigenvectors wanted
+    k=shape-2
+    print("### Getting eigenvalues for S=",Stot," shape=",shape," k=",k)
+    
     # Define matrix-vector operation on a vector psi.
     def mv(psi):
         return product_rho_wavefunction_pt(psi,rho + 5*rho_identity, S_index) 
@@ -130,34 +137,22 @@ for S_index in range(floor(ntls*0.5+1)):
     A = LinearOperator((shape,shape), matvec=mv) 
     # Note that k must not be larger than shape-1, hence use of minimum here.
 
-    #TODO: More efficiency 
+    eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=k, which = 'SA', tol = 1e-7)
+    eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
 
-    if Stot != ntls*0.5:
+    # Find how many times each of these eigenvalues should appear
+    # in the list.
+    deg = degeneracy(ntls, Stot)
 
+    # Add the list of eigenvalues deg times to the total list
+    total_eigenvalues += eig_symmetric * deg
 
-        deg = degeneracy(ntls, Stot)
+    # Create a version that alternates between Stot and the value,
+    # and also add that deg times
+    audit_list = [(Stot,val) for val in eig_symmetric]
+    spin_audit += audit_list*deg
 
-        for i in range(deg): 
-            eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=shape-2, which = 'SA', tol = 1e-7)
-            eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
-            for val in eig_symmetric:
-                total_eigenvalues.append(val)
-                spin_audit.append((Stot, val))
-
-    else: 
-        # eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=min(6,shape-2), which = 'SA', tol = 1e-7)
-        eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=shape-2, which = 'SA', tol = 1e-7)
-        eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
-        for val in eig_symmetric:
-            total_eigenvalues.append(val)
-            spin_audit.append((Stot, val))
-
-
-    # eig_symmetric_adjust , eig_vectorsh_ = scipy.sparse.linalg.eigsh(A, k=min(6,shape-2), which = 'SA', tol = 1e-6)
-    # eig_symmetric = [x - 5 for x in eig_symmetric_adjust]
-    # for val in eig_symmetric:
-    #     total_eigenvalues.append(val)
-
+            
 with open('data.tmp/my_eigenvalues_ss.csv', 'w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow([str(val) for val in np.sort(total_eigenvalues)])
